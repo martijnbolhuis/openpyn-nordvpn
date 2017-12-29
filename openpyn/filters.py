@@ -3,7 +3,7 @@ import sys
 from openpyn import locations
 
 
-def filter_by_toppest(pinged_servers_list, toppest_servers):
+def filter_by_pings(pinged_servers_list, toppest_servers):
     remaining_servers = []
 
     # 5 top servers or if less than 5 totel servers

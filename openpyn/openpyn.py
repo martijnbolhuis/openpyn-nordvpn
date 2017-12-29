@@ -192,10 +192,14 @@ def run(
         better_servers_list = find_better_servers(
                                 country_code, area, max_load, top_servers, udp, p2p,
                                 dedicated, double_vpn, tor_over_vpn, anti_ddos)
-        pinged_servers_list = ping_servers(better_servers_list, pings)
-        filtered_by_toppest = filters.filter_by_toppest(pinged_servers_list, toppest_servers)
-        # print("FILTERED BY TOPPEST", type(filtered_by_toppest), filtered_by_toppest)
-        chosen_servers = choose_best_servers(filtered_by_toppest)
+
+        chosen_servers = []
+        if int(pings) > 0:
+            pinged_servers_list = ping_servers(better_servers_list, pings)
+            filtered_by_toppest = filters.filter_by_pings(pinged_servers_list, toppest_servers)
+            chosen_servers = choose_best_servers_from_pings(filtered_by_toppest)
+        else:
+            chosen_servers = choose_best_servers_from_load(better_servers_list)
 
         if daemon:
             if force_fw_rules:
@@ -360,7 +364,7 @@ def ping_servers(better_servers_list, pings):
 
 
 # Returns a list of servers (toppest_servers) (e.g 3 servers) to connect to.
-def choose_best_servers(best_servers):
+def choose_best_servers_from_pings(best_servers):
     best_servers_names = []
 
     # populate bestServerList
@@ -371,6 +375,14 @@ def choose_best_servers(best_servers):
           Fore.GREEN + str(best_servers_names) + Fore.BLUE + "\n")
     return best_servers_names
 
+def choose_best_servers_from_load(best_servers):
+    best_servers_names = []
+
+    # populate bestServerList
+    for i in best_servers:
+        best_servers_names.append(i[0])
+
+    return best_servers_names
 
 def kill_vpn_processes():
     try:
@@ -592,7 +604,7 @@ def connect(server, port, daemon, test, skip_dns_patch, server_provider="nordvpn
             subprocess.Popen(
                 ["sudo", "openvpn", "--redirect-gateway", "--auth-retry",
                     "nointeract", "--config", vpn_config_file, "--auth-user-pass",
-                    "/usr/share/openpyn/credentials", "--script-security", "2",
+                    "/usr/share/openpyn/credentials", "--connect-retry-max", "3", "--script-security", "2",
                     "--up", "/usr/share/openpyn/update-resolv-conf.sh",
                     "--down", "/usr/share/openpyn/update-resolv-conf.sh", "--daemon",
                     "--management", "127.0.0.1", "7015", "--management-up-down"])
