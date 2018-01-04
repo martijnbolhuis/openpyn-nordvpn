@@ -19,7 +19,7 @@ def verify_root_access(message):
     # -n 'non-interactive' mode used to, not prompt for password (if user not sudo) but throw err.
     except subprocess.CalledProcessError:
         print(message, '\n')
-        return False
+        # return False
     return True
 
 

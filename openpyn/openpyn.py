@@ -118,7 +118,6 @@ def main():
         args.tor_over_vpn, args.anti_ddos, args.test, args.internally_allowed,
         args.skip_dns_patch)
 
-
 def run(
     # run openpyn
     init, server, country_code, country, area, udp, daemon, max_load, top_servers,
@@ -560,6 +559,20 @@ def get_vpn_server_ip(server, port):
         return vpn_server_ip
 
 
+def monitor_openvpn_output(cmd):
+    for line in cmd.stdout:
+        if "will try again in 5 seconds: Connection timed out" in str(line):
+            print("Connection dropped start reconnect")
+
+            print(line)
+            # kill_vpn_processes()
+            subprocess.Popen('/usr/share/openpyn/kill_openvpn.sh')
+            main()
+        else:
+            print(line)
+
+
+
 def connect(server, port, daemon, test, skip_dns_patch, server_provider="nordvpn"):
     if server_provider == "nordvpn":
         vpn_config_file = "/usr/share/openpyn/files/" + server + ".nordvpn.com."\
@@ -601,27 +614,29 @@ def connect(server, port, daemon, test, skip_dns_patch, server_provider="nordvpn
         # tunnel dns throught vpn by changing /etc/resolv.conf using
         # "update-resolv-conf.sh" to change the dns servers to NordVPN's.
         if daemon:
-            subprocess.Popen(
+            cmd = subprocess.Popen(
                 ["sudo", "openvpn", "--redirect-gateway", "--auth-retry",
                     "nointeract", "--config", vpn_config_file, "--auth-user-pass",
-                    "/usr/share/openpyn/credentials", "--connect-retry-max", "3", "--script-security", "2",
+                    "/usr/share/openpyn/credentials", "--script-security", "2",
                     "--up", "/usr/share/openpyn/update-resolv-conf.sh",
                     "--down", "/usr/share/openpyn/update-resolv-conf.sh", "--daemon",
-                    "--management", "127.0.0.1", "7015", "--management-up-down"])
+                    "--management", "127.0.0.1", "7015", "--management-up-down"], shell=True, stdout=subprocess.PIPE)
             print("Started 'openvpn' in" + Fore.GREEN + "--daemon" + Fore.BLUE + "mode")
+            monitor_openvpn_output(cmd)
         else:
             try:
                 print("Your OS'" + Fore.GREEN + detected_os + Fore.BLUE +
                       "' Does have '/sbin/resolvconf'",
                       "using it to update DNS Resolver Entries")
                 print(Style.RESET_ALL)
-                subprocess.run(
+                cmd = subprocess.Popen(
                     "sudo openvpn --redirect-gateway --auth-retry nointeract" +
                     " --config " + vpn_config_file + " --auth-user-pass \
                     /usr/share/openpyn/credentials --script-security 2 --up \
                     /usr/share/openpyn/update-resolv-conf.sh --down \
                     /usr/share/openpyn/update-resolv-conf.sh \
-                    --management 127.0.0.1 7015 --management-up-down", shell=True)
+                    --management 127.0.0.1 7015 --management-up-down", shell=True, stdout=subprocess.PIPE)
+                monitor_openvpn_output(cmd)
             except (KeyboardInterrupt) as err:
                 print('\nShutting down safely, please wait until process exits\n')
                 sys.exit()
