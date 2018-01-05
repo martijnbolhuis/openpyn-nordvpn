@@ -1,2 +1,2 @@
 #!/usr/bin/env sh
-killall openvpn
+sudo killall openvpn
